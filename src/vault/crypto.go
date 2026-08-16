@@ -25,8 +25,8 @@ const (
 	SecretKeyDefaultVersion = "A3"
 	SecretKeyCharset        = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ"
 
-	AuthenticationSaltLen = 32
-	EncrytionSaltLen      = 32
+	AuthenticationSaltLen uint8 = 32
+	EncrytionSaltLen      uint8 = 32
 
 	PrivateKeyBits      = 2048
 	VaultSecretKeyBytes = 32

@@ -36,7 +36,7 @@ func TestGenerateSecretKey(t *testing.T) {
 func TestGenerateRandomKey(t *testing.T) {
 	// generate data
 	totalKeys := 24
-	keyLen := uint8(48)
+	keyLen := vault.EncrytionSaltLen
 	keys := make([][]byte, totalKeys)
 	for i := range totalKeys {
 		keys[i] = vault.GenerateRandomKey(keyLen)
