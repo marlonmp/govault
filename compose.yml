@@ -1,0 +1,26 @@
+services:
+  db:
+    container_name: govault-db
+    restart: no
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - govault:/var/lib/postgresql
+
+  db-admin:
+    container_name: govault-db-admin
+    image: adminer
+    restart: no
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+
+volumes:
+  govault:
+
