@@ -33,7 +33,7 @@ func TestVaultLockUnlack(t *testing.T) {
 		Password:   []byte("MyW3akP4ssword!"),
 		OTPAuthURI: []byte("otpauth://totp/test:user@test.com?secret=BCXDH52EKRYXBUZKQVWTB6XMTOR3HQQ2&issuer=test&algorithm=SHA1&digits=6&period=30"),
 	}
-	err = v.AddItem(&item)
+	_, err = v.AddItem(&item)
 	if err != nil {
 		t.Fatalf("vault: add item: cannot add item: %v", err)
 	}
@@ -59,3 +59,43 @@ func TestVaultLockUnlack(t *testing.T) {
 		t.Errorf("vault: unlock: non equal passwords: expected %s but got %s", item.Password, decItem.Password)
 	}
 }
+
+func TestVaultSharing(t *testing.T) {
+	secondPriv, err := vault.GeneratePrivateKey()
+	if err != nil {
+		t.Fatalf("second vault: second private key: cannot generate private key: %v", err)
+	}
+	secondPub := &secondPriv.PublicKey
+	firstVault := vault.New("test-vault")
+	item := vault.Item{
+		Title:      "Gmail",
+		URL:        "https://gmail.com",
+		User:       "test@gmail.com",
+		Password:   []byte("MyW3akP4ssword!"),
+		OTPAuthURI: []byte("otpauth://totp/test:user@test.com?secret=BCXDH52EKRYXBUZKQVWTB6XMTOR3HQQ2&issuer=test&algorithm=SHA1&digits=6&period=30"),
+	}
+	itemID, err := firstVault.AddItem(&item)
+	if err != nil {
+		t.Fatalf("first vault: add item: cannot add item: %v", err)
+	}
+	secondEncVault, err := firstVault.SoftLock(secondPub)
+	if err != nil {
+		t.Fatalf("first vault: cannot soft lock the vault: %v", err)
+	}
+	secondVault, err := secondEncVault.Unlock(secondPriv)
+	if err != nil {
+		t.Fatalf("second vault: unlock the vault: %v", err)
+	}
+	firstItem, err := firstVault.UnlockItem(itemID)
+	if err != nil {
+		t.Fatalf("first vault: cannot get item: %v", err)
+	}
+	secondItem, err := secondVault.UnlockItem(itemID)
+	if err != nil {
+		t.Fatalf("second vault: cannot get item: %v", err)
+	}
+	if !bytes.EqualFold(firstItem.Password, secondItem.Password) {
+		t.Fatalf("shared vaults has not the same items")
+	}
+}
+
