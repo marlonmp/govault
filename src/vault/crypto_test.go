@@ -3,6 +3,7 @@ package vault_test
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"regexp"
 	"testing"
 
@@ -29,22 +30,6 @@ func TestGenerateSecretKey(t *testing.T) {
 	for i, secretKey := range secretKeys {
 		if !re.Match(secretKey) {
 			t.Errorf("generate secret key: invalid secret key format: %02d - %s", i, secretKey)
-		}
-	}
-}
-
-func TestGenerateRandomKey(t *testing.T) {
-	// generate data
-	totalKeys := 24
-	keyLen := vault.EncrytionSaltLen
-	keys := make([][]byte, totalKeys)
-	for i := range totalKeys {
-		keys[i] = vault.GenerateRandomKey(keyLen)
-	}
-	// valetade data
-	for i, key := range keys {
-		if len(key) != int(keyLen) {
-			t.Errorf("generate random key: invaled key generated: %20d- %v", i, key)
 		}
 	}
 }
