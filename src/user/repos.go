@@ -65,4 +65,3 @@ func (repo *pgUserRepo) UpdateByID(ctx context.Context, id uuid.UUID, user User)
 	}
 	return user, err
 }
-
