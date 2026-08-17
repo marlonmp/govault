@@ -1,9 +1,15 @@
 package user
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	UUID     uuid.UUID
-	Nickname string
-	Email    string
+	ID        uuid.UUID
+	Nickname  string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

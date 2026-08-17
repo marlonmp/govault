@@ -112,7 +112,7 @@ func TwoSecretKeyDerivation(password, secretKey, salt, version []byte, user user
 		return nil, err
 	}
 	// generate a intermediate as the same len of the password key with the secret key
-	derivatedSecretKey, err := hkdf.Key(sha256.New, secretKey, version, user.UUID.String(), len(derivatedPassword))
+	derivatedSecretKey, err := hkdf.Key(sha256.New, secretKey, version, user.ID.String(), len(derivatedPassword))
 	if err != nil {
 		return nil, err
 	}

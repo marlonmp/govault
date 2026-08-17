@@ -52,12 +52,12 @@ func TestGenerateRandomKey(t *testing.T) {
 func TestTwoSecretKeyDerivation(t *testing.T) {
 	// generate data
 	u := user.User{
-		UUID:     uuid.New(),
+		ID:       uuid.New(),
 		Nickname: "John Doe",
 		Email:    "john.doe@email.com",
 	}
 	password := []byte("MyWeakP4ssword!")
-	secretKey := vault.GeneratSecretKey(u.UUID)
+	secretKey := vault.GeneratSecretKey(u.ID)
 	salt := vault.GenerateRandomKey(vault.EncrytionSaltLen)
 	version := []byte("client-v1")
 	// generate two secert derivated key
@@ -76,7 +76,7 @@ func TestTwoSecretKeyDerivation(t *testing.T) {
 		t.Fatalf("2skd: error generating derivated password: %v", err)
 	}
 	// generate derivated secret
-	derivatedSecretKey, err := hkdf.Key(sha256.New, secretKey, version, u.UUID.String(), len(derivatedPassword))
+	derivatedSecretKey, err := hkdf.Key(sha256.New, secretKey, version, u.ID.String(), len(derivatedPassword))
 	if err != nil {
 		t.Fatalf("2skd: error generating derivated secret key: %v", err)
 	}
@@ -98,12 +98,12 @@ func TestTwoSecretKeyDerivation(t *testing.T) {
 func TestEncryptDecryptGCM(t *testing.T) {
 	// generate data
 	u := user.User{
-		UUID:     uuid.New(),
+		ID:       uuid.New(),
 		Nickname: "John Doe",
 		Email:    "john.doe@email.com",
 	}
 	password := []byte("MyWeakP4ssword!")
-	secretKey := vault.GeneratSecretKey(u.UUID)
+	secretKey := vault.GeneratSecretKey(u.ID)
 	salt := vault.GenerateRandomKey(vault.AuthenticationSaltLen)
 	version := []byte("client-v1")
 	// generate two secert derivated key
