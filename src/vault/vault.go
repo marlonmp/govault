@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/marlonmp/govault/src/crypto"
 	"github.com/pquerna/otp/totp"
 )
 
@@ -67,7 +68,7 @@ func (ei encryptedItem) copy() encryptedItem {
 }
 
 func (ei encryptedItem) unlock(key []byte) (*Item, error) {
-	jsonItem, err := DecryptAESGCM(ei.Content, key)
+	jsonItem, err := crypto.DecryptAESGCM(ei.Content, key)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ func (i *Item) lock(key []byte) (encryptedItem, error) {
 		return encryptedItem{}, err
 	}
 	// encrypt content
-	cipherContent, err := EncryptAESGCM(jsonContent, key)
+	cipherContent, err := crypto.EncryptAESGCM(jsonContent, key)
 	if err != nil {
 		return encryptedItem{}, err
 	}
@@ -170,7 +171,7 @@ func (ev encryptedVault) Unlock(priv *rsa.PrivateKey) (*vault, error) {
 		return nil, err
 	}
 	// decrypt the content
-	jsonItems, err := DecryptAESGCM(ev.Content, key)
+	jsonItems, err := crypto.DecryptAESGCM(ev.Content, key)
 	// unmarshal the content
 	items := make([]encryptedItem, 0)
 	err = json.Unmarshal(jsonItems, &items)
@@ -200,7 +201,7 @@ type vault struct {
 
 func New(title string) *vault {
 	// generate encryption key
-	key := GenerateRandomKey(VaultSecretKeyBytes)
+	key := crypto.GenerateRandomKey(crypto.VaultSecretKeyBytes)
 	return &vault{
 		id:        uuid.New(),
 		title:     title,
@@ -336,7 +337,7 @@ func (v *vault) SoftLock(pub *rsa.PublicKey) (encryptedVault, error) {
 		return encryptedVault{}, err
 	}
 	// encrypt encrypted items list
-	cipherEncItems, err := EncryptAESGCM(jsonEncItems, v.key)
+	cipherEncItems, err := crypto.EncryptAESGCM(jsonEncItems, v.key)
 	if err != nil {
 		return encryptedVault{}, err
 	}

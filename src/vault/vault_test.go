@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/marlonmp/govault/src/crypto"
 	"github.com/marlonmp/govault/src/vault"
 )
 
@@ -20,7 +21,7 @@ func isErasedSecurely(b []byte) bool {
 }
 
 func TestVaultLockUnlack(t *testing.T) {
-	priv, err := vault.GeneratePrivateKey()
+	priv, err := crypto.GeneratePrivateKey()
 	if err != nil {
 		t.Fatalf("vault: private key: cannot generate private key: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestVaultLockUnlack(t *testing.T) {
 }
 
 func TestVaultSharing(t *testing.T) {
-	secondPriv, err := vault.GeneratePrivateKey()
+	secondPriv, err := crypto.GeneratePrivateKey()
 	if err != nil {
 		t.Fatalf("second vault: second private key: cannot generate private key: %v", err)
 	}
@@ -98,4 +99,3 @@ func TestVaultSharing(t *testing.T) {
 		t.Fatalf("shared vaults has not the same items")
 	}
 }
-

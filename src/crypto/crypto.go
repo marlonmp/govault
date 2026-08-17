@@ -1,4 +1,4 @@
-package vault
+package crypto
 
 import (
 	"bytes"
@@ -168,3 +168,4 @@ func DecryptAESGCM(src, key []byte) ([]byte, error) {
 	nonce, cipherContent := src[:nonceSize], src[nonceSize:]
 	return gcm.Open(nil, nonce, cipherContent, nil)
 }
+

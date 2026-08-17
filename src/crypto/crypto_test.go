@@ -1,9 +1,8 @@
-package vault_test
+package crypto_test
 
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/base64"
 	"regexp"
 	"testing"
 
@@ -11,8 +10,8 @@ import (
 	"crypto/pbkdf2"
 
 	"github.com/google/uuid"
+	"github.com/marlonmp/govault/src/crypto"
 	"github.com/marlonmp/govault/src/user"
-	"github.com/marlonmp/govault/src/vault"
 )
 
 func TestGenerateSecretKey(t *testing.T) {
@@ -20,7 +19,7 @@ func TestGenerateSecretKey(t *testing.T) {
 	totalKeys := 24
 	secretKeys := make([][]byte, totalKeys)
 	for i := range totalKeys {
-		secretKeys[i] = vault.GeneratSecretKey(uuid.New())
+		secretKeys[i] = crypto.GeneratSecretKey(uuid.New())
 	}
 	// validate secret key structure
 	re, err := regexp.Compile(`^A3(-[0-9A-Z]{6}){2}(-[0-9A-Z]{5}){4}$`)
@@ -122,10 +121,10 @@ func FuzzTwoSecretKeyDerivation(f *testing.F) {
 	for _, tcase := range testcases {
 		id := uuid.New()
 		tcase.User.ID = id
-		secretKey := vault.GeneratSecretKey(id)
-		salt := vault.GenerateRandomKey(vault.EncrytionSaltLen)
+		secretKey := crypto.GeneratSecretKey(id)
+		salt := crypto.GenerateRandomKey(crypto.EncrytionSaltLen)
 		version := []byte("client-v1")
-		derivatedKey, err := vault.TwoSecretKeyDerivation(tcase.Password, secretKey, salt, version, tcase.User)
+		derivatedKey, err := crypto.TwoSecretKeyDerivation(tcase.Password, secretKey, salt, version, tcase.User)
 		if err != nil {
 			f.Errorf("2skd: cannot generate 2skd: %v", err)
 		}
@@ -133,12 +132,12 @@ func FuzzTwoSecretKeyDerivation(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, id, email, password string, version, salt, secretKey, derivatedKey []byte) {
 		// generate a derivated salt
-		derivatedSalt, err := hkdf.Key(sha256.New, salt, version, email, vault.HKDFSaltLen)
+		derivatedSalt, err := hkdf.Key(sha256.New, salt, version, email, crypto.HKDFSaltLen)
 		if err != nil {
 			t.Fatalf("2skd: error generating derivated salt: %v", err)
 		}
 		// generate derivated password
-		derivatedPassword, err := pbkdf2.Key(sha256.New, password, derivatedSalt, vault.PBKDF2PasswordIters, vault.PBKDF2PasswordLen)
+		derivatedPassword, err := pbkdf2.Key(sha256.New, password, derivatedSalt, crypto.PBKDF2PasswordIters, crypto.PBKDF2PasswordLen)
 		if err != nil {
 			t.Fatalf("2skd: error generating derivated password: %v", err)
 		}
@@ -262,14 +261,14 @@ func FuzzEnrcyptDecryptGCM(f *testing.F) {
 	for _, tcase := range testcases {
 		id := uuid.New()
 		tcase.User.ID = id
-		secretKey := vault.GeneratSecretKey(id)
-		salt := vault.GenerateRandomKey(vault.EncrytionSaltLen)
+		secretKey := crypto.GeneratSecretKey(id)
+		salt := crypto.GenerateRandomKey(crypto.EncrytionSaltLen)
 		version := []byte("client-v1")
-		derivatedKey, err := vault.TwoSecretKeyDerivation(tcase.Password, secretKey, salt, version, tcase.User)
+		derivatedKey, err := crypto.TwoSecretKeyDerivation(tcase.Password, secretKey, salt, version, tcase.User)
 		if err != nil {
 			f.Errorf("2skd: cannot generate 2skd: %v", err)
 		}
-		ciphertext, err := vault.EncryptAESGCM(tcase.Content, derivatedKey)
+		ciphertext, err := crypto.EncryptAESGCM(tcase.Content, derivatedKey)
 		if err != nil {
 			f.Fatalf("aes-gcm enc/dec: cannot encrypt text: %v", err)
 		}
@@ -277,7 +276,7 @@ func FuzzEnrcyptDecryptGCM(f *testing.F) {
 	}
 	// execute test for every test case
 	f.Fuzz(func(t *testing.T, text, ciphertext, derivatedKey []byte) {
-		decText, err := vault.DecryptAESGCM(ciphertext, derivatedKey)
+		decText, err := crypto.DecryptAESGCM(ciphertext, derivatedKey)
 		if err != nil {
 			t.Fatalf("aes-gcm enc/dec: cannot decrypt text: %v", err)
 		}
@@ -287,4 +286,3 @@ func FuzzEnrcyptDecryptGCM(f *testing.F) {
 	})
 
 }
-
