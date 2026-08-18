@@ -31,7 +31,7 @@ func NewPGUserRepo(conn *sql.Conn, logger *slog.Logger) UserRepo {
 }
 
 func (repo *pgUserRepo) Create(ctx context.Context, user User) (User, error) {
-	query := `insert into users ("nickname", "email") values ($1, $2) returning "id", "created_at", "updated_at"`
+	query := `insert into users ("nickname", "email") values ($1, $2) returning "user_id", "created_at", "updated_at"`
 	err := repo.conn.
 		QueryRowContext(ctx, query, user.Nickname, user.Email).
 		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
@@ -44,7 +44,7 @@ func (repo *pgUserRepo) Create(ctx context.Context, user User) (User, error) {
 
 func (repo *pgUserRepo) GetByID(ctx context.Context, id uuid.UUID) (User, error) {
 	user := User{}
-	query := `select "id", "nickname", "email", "created_at", "updated_at" from users where "id" = $1`
+	query := `select "user_id", "nickname", "email", "created_at", "updated_at" from users where "user_id" = $1`
 	err := repo.conn.
 		QueryRowContext(ctx, query, id).
 		Scan(&user.ID, &user.Nickname, &user.Email, &user.CreatedAt, &user.UpdatedAt)
@@ -55,7 +55,7 @@ func (repo *pgUserRepo) GetByID(ctx context.Context, id uuid.UUID) (User, error)
 }
 
 func (repo *pgUserRepo) UpdateByID(ctx context.Context, id uuid.UUID, user User) (User, error) {
-	query := `update users set "nickname" = $2, "email" = $3, "updated_at" = now() where "id" = $1" returning "updated_at"`
+	query := `update users set "nickname" = $2, "email" = $3, "updated_at" = now() where "user_id" = $1" returning "updated_at"`
 	err := repo.conn.
 		QueryRowContext(ctx, query, id, user.Nickname, user.Email).
 		Scan(&user.UpdatedAt)
