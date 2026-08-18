@@ -3,21 +3,24 @@ package crypto
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type EncKeyset struct {
-	ID                 uuid.UUID
-	EncryptoinSalt     []byte
-	AuthenticationSalt []byte
-	SRPVerifier        []byte
-	Pub                []byte
-	EncPriv            []byte
+	ID          uuid.UUID
+	EncSalt     []byte
+	AuthSalt    []byte
+	SRPVerifier []byte
+	PubKey      []byte
+	EncPrivKey  []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (ek *EncKeyset) Unlock(derivatedKey []byte) (*Keyset, error) {
-	privBytes, err := EncryptAESGCM(ek.EncPriv, derivatedKey)
+	privBytes, err := EncryptAESGCM(ek.EncPrivKey, derivatedKey)
 	if err != nil {
 		return nil, err
 	}
@@ -27,10 +30,12 @@ func (ek *EncKeyset) Unlock(derivatedKey []byte) (*Keyset, error) {
 	}
 	keyset := &Keyset{
 		ID:                 ek.ID,
-		EncryptoinSalt:     ek.EncryptoinSalt,
-		AuthenticationSalt: ek.AuthenticationSalt,
+		EncryptoinSalt:     ek.EncSalt,
+		AuthenticationSalt: ek.AuthSalt,
 		SRPVerifier:        ek.SRPVerifier,
 		Priv:               priv,
+		CreatedAt:          ek.CreatedAt,
+		UpdatedAt:          ek.UpdatedAt,
 	}
 	return keyset, nil
 }
@@ -41,6 +46,8 @@ type Keyset struct {
 	AuthenticationSalt []byte
 	SRPVerifier        []byte
 	Priv               *rsa.PrivateKey
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // TODO: implement private key erasing from mmemory
@@ -55,12 +62,14 @@ func (k *Keyset) Lock(derivatedKey []byte) (*EncKeyset, error) {
 	}
 	pubBytes := x509.MarshalPKCS1PublicKey(&k.Priv.PublicKey)
 	encKeyset := &EncKeyset{
-		ID:                 k.ID,
-		EncryptoinSalt:     k.EncryptoinSalt,
-		AuthenticationSalt: k.AuthenticationSalt,
-		SRPVerifier:        k.SRPVerifier,
-		Pub:                pubBytes,
-		EncPriv:            encPriv,
+		ID:          k.ID,
+		EncSalt:     k.EncryptoinSalt,
+		AuthSalt:    k.AuthenticationSalt,
+		SRPVerifier: k.SRPVerifier,
+		PubKey:      pubBytes,
+		EncPrivKey:  encPriv,
+		CreatedAt:   k.CreatedAt,
+		UpdatedAt:   k.UpdatedAt,
 	}
 	k.erase()
 	return encKeyset, nil
