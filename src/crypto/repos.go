@@ -3,9 +3,14 @@ package crypto
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 
 	"github.com/google/uuid"
+)
+
+var (
+	UserEncKeysetNotFoundErr = errors.New("enc keyset repo: no enc keyset found with the given user id")
 )
 
 type EncKeysetRepo interface {
@@ -41,6 +46,9 @@ func (repo *pgEncKeysetRepo) GetByUserID(ctx context.Context, userID uuid.UUID) 
 	err := repo.conn.
 		QueryRowContext(ctx, query, userID).
 		Scan(&ek.ID, &ek.AuthSalt, &ek.EncSalt, &ek.SRPVerifier, &ek.PubKey, &ek.EncPrivKey, &ek.CreatedAt, &ek.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ek, UserEncKeysetNotFoundErr
+	}
 	return ek, err
 }
 
@@ -50,7 +58,11 @@ func (repo *pgEncKeysetRepo) UpdateByUserID(ctx context.Context, userID uuid.UUI
 		set "auth_salt" = $2, "enc_salt" = $3, "srp_verifier" = $4, "pub_key" = $5, "enc_priv_key" = $6, "updated_at" = now()
 		where "user_id" = $1
 		returning "updated_at"`
-	return repo.conn.
+	err := repo.conn.
 		QueryRowContext(ctx, query, userID, encKeyset.AuthSalt, encKeyset.EncSalt, encKeyset, encKeyset.SRPVerifier, encKeyset.PubKey, encKeyset.EncPrivKey).
 		Scan(&encKeyset.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return UserEncKeysetNotFoundErr
+	}
+	return err
 }
