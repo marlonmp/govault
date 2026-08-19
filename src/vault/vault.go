@@ -153,16 +153,17 @@ func (i *Item) GenerateTOTP() (string, error) {
 	return totp.GenerateCode(otpauthuri, time.Now())
 }
 
-type encryptedVault struct {
+type encVault struct {
 	ID        uuid.UUID `json:"id"`
 	Title     string    `json:"titile"`
 	Key       []byte    `json:"key"`
 	Content   []byte    `json:"content"`
+	CanSync   bool      `json:"con_sync"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func (ev encryptedVault) Unlock(priv *rsa.PrivateKey) (*vault, error) {
+func (ev encVault) Unlock(priv *rsa.PrivateKey) (*vault, error) {
 	// generate key encryption label
 	label := generateVaultLabel(ev.ID)
 	// decrypt the vault key
@@ -184,6 +185,7 @@ func (ev encryptedVault) Unlock(priv *rsa.PrivateKey) (*vault, error) {
 		title:     ev.Title,
 		key:       key,
 		encItems:  items,
+		CanSync:   ev.CanSync,
 		createdAt: ev.CreatedAt,
 		updatedAt: ev.UpdatedAt,
 	}
@@ -195,6 +197,7 @@ type vault struct {
 	title     string
 	key       []byte
 	encItems  []encryptedItem
+	CanSync   bool
 	createdAt time.Time
 	updatedAt time.Time
 }
@@ -207,6 +210,7 @@ func New(title string) *vault {
 		title:     title,
 		key:       key,
 		encItems:  make([]encryptedItem, 0),
+		CanSync:   true,
 		createdAt: time.Now(),
 		updatedAt: time.Now(),
 	}
@@ -330,29 +334,30 @@ func (v *vault) erase() {
 
 // This method encrypt the vault items with the vault key and encrypt
 // the vault key with the gived public key returning an encrypted vault
-func (v *vault) SoftLock(pub *rsa.PublicKey) (encryptedVault, error) {
+func (v *vault) SoftLock(pub *rsa.PublicKey) (encVault, error) {
 	// marshal encrypted items list
 	jsonEncItems, err := json.Marshal(v.encItems)
 	if err != nil {
-		return encryptedVault{}, err
+		return encVault{}, err
 	}
 	// encrypt encrypted items list
 	cipherEncItems, err := crypto.EncryptAESGCM(jsonEncItems, v.key)
 	if err != nil {
-		return encryptedVault{}, err
+		return encVault{}, err
 	}
 	// generate key encryption label
 	label := generateVaultLabel(v.id)
 	// encrypt the encryption key with the public key
 	cipherKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, v.key, label)
 	if err != nil {
-		return encryptedVault{}, err
+		return encVault{}, err
 	}
-	encVault := encryptedVault{
+	encVault := encVault{
 		ID:        v.id,
 		Title:     v.title,
 		Key:       cipherKey,
 		Content:   cipherEncItems,
+		CanSync:   v.CanSync,
 		CreatedAt: v.createdAt,
 		UpdatedAt: v.updatedAt,
 	}
@@ -365,12 +370,12 @@ func (v *vault) SoftLock(pub *rsa.PublicKey) (encryptedVault, error) {
 //
 // NOTE: once the vault is locked, the vault key is erased from
 // memory the vault cannot be used anymore
-func (v *vault) Lock(pub *rsa.PublicKey) (encryptedVault, error) {
-	encVault, err := v.SoftLock(pub)
+func (v *vault) Lock(pub *rsa.PublicKey) (encVault, error) {
+	eVault, err := v.SoftLock(pub)
 	if err != nil {
-		return encryptedVault{}, err
+		return encVault{}, err
 	}
 	// securely erase the key from memory
 	v.erase()
-	return encVault, nil
+	return eVault, nil
 }
