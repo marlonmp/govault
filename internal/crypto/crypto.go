@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/marlonmp/govault/src/user"
+	"github.com/marlonmp/govault/internal/user"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -168,4 +168,3 @@ func DecryptAESGCM(src, key []byte) ([]byte, error) {
 	nonce, cipherContent := src[:nonceSize], src[nonceSize:]
 	return gcm.Open(nil, nonce, cipherContent, nil)
 }
-

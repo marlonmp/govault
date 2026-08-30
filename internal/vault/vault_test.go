@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/marlonmp/govault/src/crypto"
-	"github.com/marlonmp/govault/src/vault"
+	"github.com/marlonmp/govault/internal/crypto"
+	"github.com/marlonmp/govault/internal/vault"
 )
 
 func isErasedSecurely(b []byte) bool {

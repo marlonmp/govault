@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/marlonmp/govault/src/crypto"
+	"github.com/marlonmp/govault/internal/crypto"
 	"github.com/pquerna/otp/totp"
 )
 

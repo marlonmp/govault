@@ -10,8 +10,8 @@ import (
 	"crypto/pbkdf2"
 
 	"github.com/google/uuid"
-	"github.com/marlonmp/govault/src/crypto"
-	"github.com/marlonmp/govault/src/user"
+	"github.com/marlonmp/govault/internal/crypto"
+	"github.com/marlonmp/govault/internal/user"
 )
 
 func TestGenerateSecretKey(t *testing.T) {
