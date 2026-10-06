@@ -1,7 +1,7 @@
 package user
 
 import (
-	"github.com/marlonmp/govault/internal/errs"
+	"github.com/marlonmp/govault/pkg/errs"
 	"github.com/marlonmp/govault/pkg/vals"
 )
 
@@ -10,29 +10,29 @@ type RegisterUserPayload struct {
 	Email    string
 }
 
-func (rup RegisterUserPayload) GetValidationError() error {
+func (payload RegisterUserPayload) GetValidationError() error {
 	errors := make([]errs.AppErrorItem, 0)
-	if len(rup.Nickname) < 3 || len(rup.Nickname) > 32 {
+	if len(payload.Nickname) < 3 || len(payload.Nickname) > 32 {
 		err := errs.AppErrorItem{
-			Code: "invalid_length",
-			Path: "/nickname",
+			Code:    "invalid_length",
+			Path:    "/nickname",
 			Message: "this field must have a minimum length of 3 and a maximum of 32",
 		}
 		errors = append(errors, err)
 	}
-	email := vals.NormalizeEmail(rup.Email)
+	email := vals.NormalizeEmail(payload.Email)
 	if len(email) < 6 || len(email) > 128 {
 		err := errs.AppErrorItem{
-			Code: "invalid_length",
-			Path: "/email",
+			Code:    "invalid_length",
+			Path:    "/email",
 			Message: "this field must have a minimum length of 6 and a maximum of 128",
 		}
 		errors = append(errors, err)
 	}
 	if vals.IsValidEmail(email) {
 		err := errs.AppErrorItem{
-			Code: "invalid_format",
-			Path: "/email",
+			Code:    "invalid_format",
+			Path:    "/email",
 			Message: "this field is not a valid email",
 		}
 		errors = append(errors, err)
@@ -43,6 +43,6 @@ func (rup RegisterUserPayload) GetValidationError() error {
 	return nil
 }
 
-func (rup RegisterUserPayload) BuildUser() User {
-	return User{Nickname: rup.Nickname, Email: rup.Email}
+func (payload RegisterUserPayload) BuildUser() User {
+	return User{Nickname: payload.Nickname, Email: payload.Email}
 }

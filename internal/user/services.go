@@ -8,8 +8,8 @@ import (
 )
 
 type userService struct {
-	users UserRepo
-	logger   *slog.Logger
+	users  UserRepo
+	logger *slog.Logger
 }
 
 func NewUserService(userRepo UserRepo, logger *slog.Logger) userService {
@@ -29,7 +29,7 @@ func (us userService) CreateUser(ctx context.Context, payload RegisterUserPayloa
 	return user, nil
 }
 
-func (us userService) UpdateUser(ctx context.Context, id uuid.UUID, payload RegisterUserPayload) (User, error) {
+func (us userService) UpdateUserByID(ctx context.Context, id uuid.UUID, payload RegisterUserPayload) (User, error) {
 	err := payload.GetValidationError()
 	if err != nil {
 		return User{}, err
