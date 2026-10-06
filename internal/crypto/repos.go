@@ -7,14 +7,12 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-)
-
-var (
-	UserEncKeysetNotFoundErr = errors.New("enc keyset repo: no enc keyset found with the given user id")
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/marlonmp/govault/internal/errs"
 )
 
 type EncKeysetRepo interface {
-	CreateByUserID(ctx context.Context, userID uuid.UUID, keyset *EncKeyset) error
+	CreateByUserID(ctx context.Context, userID uuid.UUID, keyset *EncKeyset) (*EncKeyset, error)
 	GetByUserEmail(ctx context.Context, email string) (*EncKeyset, error)
 	UpdateByUserID(ctx context.Context, userID uuid.UUID, encKeyset *EncKeyset) error
 }
@@ -28,14 +26,26 @@ func NewPGEcnKeyset(db *sql.DB, logger *slog.Logger) EncKeysetRepo {
 	return &pgEncKeysetRepo{db: db, logger: logger}
 }
 
-func (repo *pgEncKeysetRepo) CreateByUserID(ctx context.Context, userID uuid.UUID, encKeyset *EncKeyset) error {
+func (repo *pgEncKeysetRepo) CreateByUserID(ctx context.Context, userID uuid.UUID, encKeyset *EncKeyset) (*EncKeyset, error) {
 	query := `
 	insert into keysets (user_id, auth_salt, enc_salt, srp_verifier, pub_key, enc_priv_key)
 		values ($1, $2, $3, $4, $5, $6)
 		returning keyset_id, created_at, updated_at`
-	return repo.db.
+	err := repo.db.
 		QueryRowContext(ctx, query, userID, encKeyset.AuthSalt, encKeyset.EncSalt, encKeyset.SRPVerifier, encKeyset.PubKey, encKeyset.EncPrivKey).
 		Scan(&encKeyset.ID, &encKeyset.CreatedAt, &encKeyset.UpdatedAt)
+	// if unique conflict, it means the keyset already exist for the user
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if pgErr.ColumnName != "email" {
+			return nil, errs.UnknownError(err)
+		}
+		return nil, errs.ConflictError("a keyset already exists for this user", err)
+	}
+	if err != nil {
+		return nil, errs.UnknownError(err)
+	}
+	return encKeyset, nil
 }
 
 func (repo *pgEncKeysetRepo) GetByUserEmail(ctx context.Context, email string) (*EncKeyset, error) {
@@ -49,7 +59,7 @@ func (repo *pgEncKeysetRepo) GetByUserEmail(ctx context.Context, email string) (
 		QueryRowContext(ctx, query, email).
 		Scan(&ek.ID, &ek.AuthSalt, &ek.EncSalt, &ek.SRPVerifier, &ek.PubKey, &ek.EncPrivKey, &ek.CreatedAt, &ek.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return ek, UserEncKeysetNotFoundErr
+		return nil, errs.NotFoundError("keyset for this user does not exist")
 	}
 	return ek, err
 }
@@ -64,7 +74,10 @@ func (repo *pgEncKeysetRepo) UpdateByUserID(ctx context.Context, userID uuid.UUI
 		QueryRowContext(ctx, query, userID, encKeyset.AuthSalt, encKeyset.EncSalt, encKeyset, encKeyset.SRPVerifier, encKeyset.PubKey, encKeyset.EncPrivKey).
 		Scan(&encKeyset.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return UserEncKeysetNotFoundErr
+		return errs.NotFoundError("keyset for this user does not exist")
 	}
-	return err
+	if err != nil {
+		return errs.UnknownError(err)
+	}
+	return nil
 }
