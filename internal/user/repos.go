@@ -8,11 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-)
-
-var (
-	UserNotFoundByEmailErr  = errors.New("user repo: no user found with the given email")
-	UserEmailAlreadyUsedErr = errors.New("user repo: cannot create user, email already used")
+	"github.com/marlonmp/govault/internal/errs"
 )
 
 type UserRepo interface {
@@ -38,13 +34,16 @@ func (repo *pgUserRepo) CreateOne(ctx context.Context, user User) (User, error) 
 	err := repo.db.
 		QueryRowContext(ctx, query, user.Nickname, user.Email).
 		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
-	// if unique conflict, it means the emal is already used
+	// if unique conflict, it means the email is already used
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return User{}, UserEmailAlreadyUsedErr
+		if pgErr.ColumnName != "email" {
+			return User{}, errs.UnknownError(err)
+		}
+		return User{}, errs.ConflictError("an user with this email already exists, please enter another email", err)
 	}
 	if err != nil {
-		return User{}, err
+		return User{}, errs.UnknownError(err)
 	}
 	return user, nil
 }
@@ -59,10 +58,10 @@ func (repo *pgUserRepo) GetByEmail(ctx context.Context, email string) (User, err
 		Scan(&user.ID, &user.Nickname, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	// if no rows the user does not exists
 	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, UserNotFoundByEmailErr
+		return User{}, errs.NotFoundError("user with this email does not exist")
 	}
 	if err != nil {
-		return User{}, err
+		return User{}, errs.UnknownError(err)
 	}
 	return user, nil
 }
@@ -75,10 +74,16 @@ func (repo *pgUserRepo) UpdateByID(ctx context.Context, id uuid.UUID, user User)
 	err := repo.db.
 		QueryRowContext(ctx, query, id, user.Nickname, user.Email).
 		Scan(&user.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, errs.NotFoundError("user with this uuid does not exist")
+	}
 	// if there is a unique conflict in the update it means the email is already used
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return User{}, UserEmailAlreadyUsedErr
+		if pgErr.ColumnName != "email" {
+			return User{}, errs.UnknownError(err)
+		}
+		return User{}, errs.ConflictError("an user with this email already exists, please enter another email", err)
 	}
 	if err != nil {
 		return User{}, err
