@@ -67,7 +67,7 @@ func (repo *pgUserRepo) UpdateByID(ctx context.Context, id uuid.UUID, user User)
 	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
 	query := `
 	update users
-		set nickname = $2, email = $3, updated_at = now()
+		set nickname = coalesce($2, nickname), email = coalesce($3, email), updated_at = now()
 		where user_id = $1 returning updated_at`
 	err := qa.
 		QueryRowContext(ctx, query, id, user.Nickname, user.Email).
