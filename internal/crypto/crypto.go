@@ -31,9 +31,11 @@ const (
 	PrivateKeyBits      = 2048
 	VaultSecretKeyBytes = 32
 
-	HKDFSaltLen         = 32
-	PBKDF2PasswordIters = 650_000
-	PBKDF2PasswordLen   = 16
+	HKDFSaltLen       = 32
+	PBKDF2PasswordLen = 16
+	PBES2MinIters     = 1_000
+	PBES2MaxIters     = 1_200_000
+	PBES2DefaultIters = 650_000
 )
 
 var (
@@ -41,7 +43,7 @@ var (
 )
 
 // This function generates the user secret key
-func GeneratSecretKey(accountID uuid.UUID) []byte {
+func GeneratSecretKey(userID uuid.UUID) []byte {
 	mem := make([]byte, 0, SecretKeyLen)
 	buff := bytes.NewBuffer(mem)
 	// append the secret key version
@@ -50,7 +52,7 @@ func GeneratSecretKey(accountID uuid.UUID) []byte {
 	// append account ID
 	accIDB36 := new(big.Int).
 		// convert the uuid into a big int
-		SetBytes(accountID[:]).
+		SetBytes(userID[:]).
 		// convert that number from base 10 into base 36
 		Text(36)
 	accIDB36 = accIDB36[:6]
@@ -107,12 +109,44 @@ func TwoSecretKeyDerivation(password, secretKey, salt, version []byte, user user
 		return nil, err
 	}
 	// apply slow hash PBKDF2-HMAC-SHA256 to the password
-	derivatedPassword, err := pbkdf2.Key(sha256.New, string(password), derivatedSalt, PBKDF2PasswordIters, PBKDF2PasswordLen)
+	derivatedPassword, err := pbkdf2.Key(sha256.New, string(password), derivatedSalt, PBES2DefaultIters, PBKDF2PasswordLen)
 	if err != nil {
 		return nil, err
 	}
 	// generate a intermediate as the same len of the password key with the secret key
 	derivatedSecretKey, err := hkdf.Key(sha256.New, secretKey, version, user.ID.String(), len(derivatedPassword))
+	if err != nil {
+		return nil, err
+	}
+	// XOR the results from the password in PBKDF2 and the secret key in HKDF
+	derivationKey := make([]byte, len(derivatedPassword))
+	for i := range len(derivatedPassword) {
+		derivationKey[i] = derivatedPassword[i] ^ derivatedSecretKey[i]
+	}
+	return derivationKey, nil
+}
+
+// Password-Based Encryption Scheme 2 with HMAC-SHA256.
+//
+// This function generates a derivated key with two given secrets,
+// it's a strongest method designed by 1Password to create a stronges key.
+//
+// This derived key is used to generate the Account Unlock Key (AUK) and the client secret used in SRP (SRP-x)
+func PBES2_HS256(password, secretKey, salt []byte, info string, iters int) ([]byte, error) {
+	// trim and normalize password
+	password = normalizePassword(password)
+	// generate a derivated salt with HKDF SHA256
+	derivatedSalt, err := hkdf.Key(sha256.New, salt, nil, info, HKDFSaltLen)
+	if err != nil {
+		return nil, err
+	}
+	// apply slow hash PBKDF2-HMAC-SHA256 to the password
+	derivatedPassword, err := pbkdf2.Key(sha256.New, string(password), derivatedSalt, iters, PBKDF2PasswordLen)
+	if err != nil {
+		return nil, err
+	}
+	// generate a intermediate as the same len of the password key with the secret key
+	derivatedSecretKey, err := hkdf.Key(sha256.New, secretKey, nil, info, len(derivatedPassword))
 	if err != nil {
 		return nil, err
 	}
@@ -167,4 +201,42 @@ func DecryptAESGCM(src, key []byte) ([]byte, error) {
 	}
 	nonce, cipherContent := src[:nonceSize], src[nonceSize:]
 	return gcm.Open(nil, nonce, cipherContent, nil)
+}
+
+// This functions encrypt an input with a key using AES-256-GCM
+func EncryptA256GCM(src, key []byte) ([]byte, []byte, error) {
+	// generate an AES cipher block with 256-bit
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	// wrap the block cipher with GCM
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+	// generate a unique iv slice
+	iv := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+		return nil, nil, err
+	}
+	// encrypt the content and append
+	cipherContent := gcm.Seal(nil, iv, src, nil)
+	return cipherContent, iv, nil
+}
+
+// This function decrypts an input with a key using AES-256-GCM
+func DecryptA256GCM(src, key, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil
+	}
+	if len(iv) < gcm.NonceSize() {
+		return nil, CipherContentTooShort
+	}
+	return gcm.Open(nil, iv, src, nil)
 }

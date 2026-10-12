@@ -137,7 +137,7 @@ func FuzzTwoSecretKeyDerivation(f *testing.F) {
 			t.Fatalf("2skd: error generating derivated salt: %v", err)
 		}
 		// generate derivated password
-		derivatedPassword, err := pbkdf2.Key(sha256.New, password, derivatedSalt, crypto.PBKDF2PasswordIters, crypto.PBKDF2PasswordLen)
+		derivatedPassword, err := pbkdf2.Key(sha256.New, password, derivatedSalt, crypto.PBES2DefaultIters, crypto.PBKDF2PasswordLen)
 		if err != nil {
 			t.Fatalf("2skd: error generating derivated password: %v", err)
 		}
