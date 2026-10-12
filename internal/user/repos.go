@@ -51,11 +51,11 @@ func (repo *pgUserRepo) GetByEmail(ctx context.Context, email string) (User, err
 	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
 	user := User{}
 	query := `
-	select user_id, nickname, email, created_at, updated_at
+	select user_id, nickname, email, secret_key, auth, created_at, updated_at
 		from users where email = $1`
 	err := qa.
 		QueryRowContext(ctx, query, email).
-		Scan(&user.ID, &user.Nickname, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.Nickname, &user.Email, &user.SecretKey, &user.Auth, &user.CreatedAt, &user.UpdatedAt)
 	// if no rows the user does not exists
 	if errors.Is(err, sql.ErrNoRows) {
 		return user, errs.NotFoundError("user with this email does not exist")
@@ -67,10 +67,11 @@ func (repo *pgUserRepo) UpdateByID(ctx context.Context, id uuid.UUID, user User)
 	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
 	query := `
 	update users
-		set nickname = $2, email = $3, updated_at = now()
+		set nickname = coalesce($2, nickname), email = coalesce($3, email),
+		secret_key = cealesce($4, secret_key), auth = coalesce($5, auth), updated_at = now()
 		where user_id = $1 returning updated_at`
 	err := qa.
-		QueryRowContext(ctx, query, id, user.Nickname, user.Email).
+		QueryRowContext(ctx, query, id, user.Nickname, user.Email, user.SecretKey, user.Auth).
 		Scan(&user.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, errs.NotFoundError("user with this uuid does not exist")
@@ -84,4 +85,14 @@ func (repo *pgUserRepo) UpdateByID(ctx context.Context, id uuid.UUID, user User)
 		return User{}, errs.ConflictError("an user with this email already exists, please enter another email", err)
 	}
 	return user, err
+}
+
+type EmailVerificationRepo interface {
+	CreateByUserID(ctx context.Context, userID uuid.UUID, verification EmailVerification) (EmailVerification, error)
+	GetByUserEmail(ctx context.Context, email string) (EmailVerification, error)
+	UpdateByID(ctx context.Context, id uuid.UUID) (EmailVerification, error)
+}
+
+type DevicerRepo interface {
+	GetOrCreateByUserID(ctx context.Context, userID uuid.UUID, device Device) (d Device, isCreated bool, err error)
 }
