@@ -45,13 +45,19 @@ The main idea is to create gRPC worker which is in charge to manage users vaults
 
 ## Loging from new client steps
 
-1. The user logs in with its password and secret key.
+1. Client send the user email, device id and user id.
 
-2. Server returns its key sets.
+2. Server returns the authentication salt and session id.
 
-3. User negotiate the SRP.
+3. Clients computes the SRP verifier.
 
-4. The server validates the user and in a success case returns its keyset.
+4. Server computes the SRP verifier.
+
+5. Client computes a 2SKD with the SRP verifier returned by the server and sent it
+
+6. Server computes a 2SKD with the SRP verifier sent by the client and return it.
+
+7. Server returns the keysets encrypted.
 
 ## Normal Unlock steps
 
@@ -67,14 +73,16 @@ The main idea is to create gRPC worker which is in charge to manage users vaults
 
 2. Then the vault secret key is saved encrypted with the user's public key.
 
-3. Every item in the vault is encrypted with the secret key. Except for the overview data such as tite, web site, timestamps, etc.
+3. Every item in the vault is encrypted with the vault secret key. Except for the overview data such as title, web site, timestamps, etc.
 
-4. The holle vault is encrypted with the secret key.
+4. The holle vault is encrypted with the vault secret key.
+
+5. The vault secret key is entrypted with the private key.
+
+## authentication steps whet update vaults
 
 ## Vault sharing steps
 
 1. The User shares encrypt the vault secret key with the invited user public key.
 
 2. Send the encrypted secret key tho the invited user.
-
-## Vault item sharing steps
