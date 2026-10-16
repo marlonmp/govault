@@ -21,6 +21,12 @@ services:
     depends_on:
       - db
 
+  cache:
+    container_name: govault-cache
+    image: redis:8-alpine
+    command: /bin/sh -c 'redis-server --requirepass $CACHE_PASSWORD --appendonly yes'
+    ports:
+      - "${CACHE_PORT}:6379"
+
 volumes:
   govault:
-
