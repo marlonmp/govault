@@ -1,13 +1,33 @@
 package user
 
 import (
+	"crypto/rand"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+const (
+	OTPLen = 6
+	OTPCharset = "0123456789"
+
+)
+
+// TODO: move this util to pkg
+func GenerateOTP() string {
+	var sb strings.Builder
+	charsetOptions := big.NewInt(int64(len(OTPCharset)))
+	for i := 0; i < OTPLen; i++ {
+		idx, _ := rand.Int(rand.Reader, charsetOptions)
+		sb.WriteByte(OTPCharset[idx.Int64()])
+	}
+	return sb.String()
+}
 
 type SecretKeyMetadata struct {
 	KeyID     string
@@ -56,37 +76,29 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+type EmailOTP struct {
+	UserID    uuid.UUID `json:"user_id"`
+	OTP       string    `json:"otp"`
+	Email     string    `json:"-"`
+	ExpiresAt time.Time `json:"-"`
+}
+
+func NewEmailOTP(userID uuid.UUID, email string) EmailOTP {
+	otp := GenerateOTP()
+	return EmailOTP{UserID: userID, OTP: otp, Email: email}
+}
+
+func (e *EmailOTP) SetExpiresAt(duration time.Duration) {
+	e.ExpiresAt = time.Now().Add(duration)
+}
+
 type EmailVerification struct {
 	ID        uuid.UUID
-	OTP       string
+	UserID    uuid.UUID
+	Email     string
 	CreatedAt time.Time
-	ExpiresAt time.Time
-	AppliedAt *time.Time
 }
 
-type DeviceMetadata struct {
-	ID            uuid.UUID
-	ClientName    string
-	ClientVersion string
-	UserAgent     string
-	OsName        string
-}
-
-func (dm *DeviceMetadata) Scan(value any) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New("expected jsonb")
-	}
-	return json.Unmarshal(bytes, dm)
-}
-
-func (dm DeviceMetadata) Value() (driver.Value, error) {
-	return json.Marshal(dm)
-}
-
-type Device struct {
-	ID        uuid.UUID
-	Data      DeviceMetadata
-	CreatedAt time.Time
-	UpdatedAt time.Time
+func NewEmailVerificationFromOTP(otp EmailOTP) EmailVerification {
+	return EmailVerification{UserID: otp.UserID, Email: otp.Email}
 }
