@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/marlonmp/govault/pkg/errs"
-	"github.com/marlonmp/govault/pkg/repos"
+	"github.com/marlonmp/govault/pkg/db"
 )
 
 type EncKeysetRepo interface {
@@ -28,7 +28,7 @@ func NewPGEcnKeyset(db *sql.DB, logger *slog.Logger) EncKeysetRepo {
 }
 
 func (repo *pgEncKeysetRepo) CreateByUserID(ctx context.Context, userID uuid.UUID, encKeyset *EncKeyset) (*EncKeyset, error) {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	insert into keysets (user_id, auth_salt, enc_salt, srp_verifier, pub_key, enc_priv_key)
 		values ($1, $2, $3, $4, $5, $6)
@@ -48,7 +48,7 @@ func (repo *pgEncKeysetRepo) CreateByUserID(ctx context.Context, userID uuid.UUI
 }
 
 func (repo *pgEncKeysetRepo) GetByUserEmail(ctx context.Context, email string) (*EncKeyset, error) {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	ek := &EncKeyset{}
 	query := `
 	select k.keyset_id, k.auth_salt, k.enc_salt, k.srp_verifier, k.pub_key, k.enc_priv_key, k.created_at, k.updated_at
@@ -65,7 +65,7 @@ func (repo *pgEncKeysetRepo) GetByUserEmail(ctx context.Context, email string) (
 }
 
 func (repo *pgEncKeysetRepo) UpdateByUserID(ctx context.Context, userID uuid.UUID, encKeyset *EncKeyset) error {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	update keysets
 		set auth_salt = $2, enc_salt = $3, srp_verifier = $4, pub_key = $5, enc_priv_key = $6, updated_at = now()

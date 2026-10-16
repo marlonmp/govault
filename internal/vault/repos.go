@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/marlonmp/govault/pkg/errs"
-	"github.com/marlonmp/govault/pkg/repos"
+	"github.com/marlonmp/govault/pkg/db"
 )
 
 var (
@@ -36,7 +36,7 @@ func NewPgEncVaultRepo(db *sql.DB, logger *slog.Logger) EncVaultRepo {
 }
 
 func (repo *pgEncVaultRepo) CreateByUserID(ctx context.Context, userID uuid.UUID, eVault *encVault) (*encVault, error) {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	insert into vaults (user_id, title, content)
 		values ($1, $2, $3)
@@ -48,7 +48,7 @@ func (repo *pgEncVaultRepo) CreateByUserID(ctx context.Context, userID uuid.UUID
 }
 
 func (repo *pgEncVaultRepo) ListByUserID(ctx context.Context, userID uuid.UUID) ([]*encVault, error) {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	select v.vault_id, v.title, vau.key, v.content, vau.sync_allowed, v.created_at, v.updated_at
 		from vaults v
@@ -73,7 +73,7 @@ func (repo *pgEncVaultRepo) ListByUserID(ctx context.Context, userID uuid.UUID) 
 }
 
 func (repo *pgEncVaultRepo) UpdateByID(ctx context.Context, id uuid.UUID, eVault *encVault) error {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	update vaults
 		set title = $2, key = $3, content = $4, updated_at = now()
@@ -89,7 +89,7 @@ func (repo *pgEncVaultRepo) UpdateByID(ctx context.Context, id uuid.UUID, eVault
 }
 
 func (repo *pgEncVaultRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	delete from vaults
 		where "vault_id" = $1`
@@ -108,7 +108,7 @@ func (repo *pgEncVaultRepo) DeleteByID(ctx context.Context, id uuid.UUID) error 
 }
 
 func (repo *pgEncVaultRepo) AppendUserIDByID(ctx context.Context, userID uuid.UUID, vaultID uuid.UUID, encKey string, canSync bool) error {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	insert into vaults_allowed_users (user_id, vault_id, enc_key, can_sync)
 		values ($1, $2, $3, $4)
@@ -123,7 +123,7 @@ func (repo *pgEncVaultRepo) AppendUserIDByID(ctx context.Context, userID uuid.UU
 }
 
 func (repo *pgEncVaultRepo) RemoveUserIDByID(ctx context.Context, userID uuid.UUID, vaultID uuid.UUID) error {
-	qa := repos.GetSqlQueryAbleFromContext(ctx, repo.db)
+	qa := db.QueryableFromContext(ctx, repo.db)
 	query := `
 	delete from vaults_allowed_users
 		where user_id = $1 and vault_id = $2`
