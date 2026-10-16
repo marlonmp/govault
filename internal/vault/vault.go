@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/marlonmp/govault/internal/crypto"
+	"github.com/marlonmp/govault/pkg/crypto"
 	"github.com/pquerna/otp/totp"
 )
 
@@ -68,7 +68,8 @@ func (ei encryptedItem) copy() encryptedItem {
 }
 
 func (ei encryptedItem) unlock(key []byte) (*Item, error) {
-	jsonItem, err := crypto.DecryptAESGCM(ei.Content, key)
+	// TODO: implement iv
+	jsonItem, err := crypto.DecryptA256GCM(ei.Content, key, []byte{})
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +125,8 @@ func (i *Item) lock(key []byte) (encryptedItem, error) {
 		return encryptedItem{}, err
 	}
 	// encrypt content
-	cipherContent, err := crypto.EncryptAESGCM(jsonContent, key)
+	// TODO: implement iv
+	cipherContent, _, err := crypto.EncryptA256GCM(jsonContent, key)
 	if err != nil {
 		return encryptedItem{}, err
 	}
@@ -172,7 +174,8 @@ func (ev encVault) Unlock(priv *rsa.PrivateKey) (*vault, error) {
 		return nil, err
 	}
 	// decrypt the content
-	jsonItems, err := crypto.DecryptAESGCM(ev.Content, key)
+	// TODO: implement iv
+	jsonItems, err := crypto.DecryptA256GCM(ev.Content, key, []byte{})
 	// unmarshal the content
 	items := make([]encryptedItem, 0)
 	err = json.Unmarshal(jsonItems, &items)
@@ -341,7 +344,8 @@ func (v *vault) SoftLock(pub *rsa.PublicKey) (encVault, error) {
 		return encVault{}, err
 	}
 	// encrypt encrypted items list
-	cipherEncItems, err := crypto.EncryptAESGCM(jsonEncItems, v.key)
+	// TODO: implement iv
+	cipherEncItems, _, err := crypto.EncryptA256GCM(jsonEncItems, v.key)
 	if err != nil {
 		return encVault{}, err
 	}

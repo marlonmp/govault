@@ -1,4 +1,4 @@
-package crypto
+package keyset
 
 import (
 	"crypto/rsa"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/marlonmp/govault/pkg/crypto"
 )
 
 type EncKeyset struct {
@@ -20,7 +21,8 @@ type EncKeyset struct {
 }
 
 func (ek *EncKeyset) Unlock(derivatedKey []byte) (*Keyset, error) {
-	privBytes, err := EncryptAESGCM(ek.EncPrivKey, derivatedKey)
+	// TODO: implement iv
+	privBytes, err := crypto.DecryptA256GCM(ek.EncPrivKey, derivatedKey, []byte{})
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +58,8 @@ func (k *Keyset) erase() {
 
 func (k *Keyset) Lock(derivatedKey []byte) (*EncKeyset, error) {
 	privBytes := x509.MarshalPKCS1PrivateKey(k.Priv)
-	encPriv, err := EncryptAESGCM(privBytes, derivatedKey)
+	// TODO: implement iv
+	encPriv, _, err := crypto.EncryptA256GCM(privBytes, derivatedKey)
 	if err != nil {
 		return nil, err
 	}

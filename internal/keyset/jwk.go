@@ -1,10 +1,11 @@
-package crypto
+package keyset
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/marlonmp/govault/pkg/crypto"
 	"github.com/marlonmp/govault/pkg/errs"
 	"github.com/marlonmp/govault/pkg/vals"
 )
@@ -26,7 +27,7 @@ func ImportEncPrivKey(priv jwk.RSAPrivateKey, auk []byte) (*EncJWK, error) {
 		return nil, err
 	}
 	kid, _ := priv.KeyID()
-	data, iv, err := EncryptA256GCM(privJson, auk)
+	data, iv, err := crypto.EncryptA256GCM(privJson, auk)
 	if err != nil {
 		return nil, err
 	}
@@ -46,14 +47,14 @@ func ImportEncSymKey(auk jwk.SymmetricKey, password, secretKey []byte) (*EncJWK,
 		return nil, err
 	}
 	kid, _ := auk.KeyID()
-	salt := GenerateRandomKey(16)
+	salt := crypto.GenerateRandomKey(16)
 	iters := 650_000
 	info := "encSymKey"
-	derivatedKey, err := PBES2_HS256(password, secretKey, salt, info, iters)
+	derivatedKey, err := crypto.PBES2_HS256(password, secretKey, salt, info, iters)
 	if err != nil {
 		return nil, nil
 	}
-	data, iv, err := EncryptA256GCM(aukJson, derivatedKey)
+	data, iv, err := crypto.EncryptA256GCM(aukJson, derivatedKey)
 	if err != nil {
 		return nil, nil
 	}
@@ -92,11 +93,11 @@ func (ej *EncJWK) Validate(vctx vals.ErrorContext) *EncJWK {
 			Message: "content type not supported",
 		})
 	}
-	if len(ej.IV) < int(EncrytionSaltLen) {
+	if len(ej.IV) < int(crypto.EncrytionSaltLen) {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_length",
 			Path:    "iv",
-			Message: fmt.Sprintf("a salt of mininum %d bytes is required", EncrytionSaltLen),
+			Message: fmt.Sprintf("a salt of mininum %d bytes is required", crypto.EncrytionSaltLen),
 		})
 	}
 	if ej.ALG != "" && ej.ALG != "PBES2g-HS256" {
@@ -106,18 +107,18 @@ func (ej *EncJWK) Validate(vctx vals.ErrorContext) *EncJWK {
 			Message: "algorithm not supported",
 		})
 	}
-	if ej.P2C < PBES2MinIters || ej.P2C > PBES2MaxIters {
+	if ej.P2C < crypto.PBES2MinIters || ej.P2C > crypto.PBES2MaxIters {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "p2c",
-			Message: fmt.Sprint("iterations must be between %d and %d", PBES2MinIters, PBES2MaxIters),
+			Message: fmt.Sprint("iterations must be between %d and %d", crypto.PBES2MinIters, crypto.PBES2MaxIters),
 		})
 	}
-	if len(ej.P2S) < int(EncrytionSaltLen) {
+	if len(ej.P2S) < int(crypto.EncrytionSaltLen) {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_length",
 			Path:    "p2s",
-			Message: fmt.Sprintf("a salt of mininum %d bytes is required", EncrytionSaltLen),
+			Message: fmt.Sprintf("a salt of mininum %d bytes is required", crypto.EncrytionSaltLen),
 		})
 	}
 	return ej

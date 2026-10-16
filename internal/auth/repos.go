@@ -99,7 +99,7 @@ type EmailVerificationRepo interface {
 
 type pgEmailVerificationRepo struct {
 	db     *sql.DB
-	cache *redis.Client
+	cache  *redis.Client
 	logger *slog.Logger
 }
 

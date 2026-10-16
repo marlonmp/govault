@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/marlonmp/govault/pkg/errs"
 	"github.com/marlonmp/govault/pkg/db"
+	"github.com/marlonmp/govault/pkg/errs"
 )
 
 var (

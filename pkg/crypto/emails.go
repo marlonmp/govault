@@ -6,9 +6,8 @@ import (
 	"strings"
 )
 
-
 const (
-	OTPLen = 6
+	OTPLen     = 6
 	OTPCharset = "0123456789"
 )
 
