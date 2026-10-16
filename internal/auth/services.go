@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"context"
@@ -9,18 +9,18 @@ import (
 	"github.com/marlonmp/govault/pkg/db"
 )
 
-type accountService struct {
+type userService struct {
 	users  UserRepo
 	emails EmailVerificationRepo
 	dbh    db.Handler
 	logger *slog.Logger
 }
 
-func NewAccountService(users UserRepo, emails EmailVerificationRepo, dbh db.Handler, logger *slog.Logger) accountService {
-	return accountService{users: users, emails: emails, dbh: dbh, logger: logger}
+func NewUserService(users UserRepo, emails EmailVerificationRepo, dbh db.Handler, logger *slog.Logger) *userService {
+	return &userService{users: users, emails: emails, dbh: dbh, logger: logger}
 }
 
-func (serv accountService) SignUp(ctx context.Context, payload RegisterUserPayload) (User, error) {
+func (serv userService) SignUp(ctx context.Context, payload RegisterUserPayload) (User, error) {
 	err := payload.Validate()
 	if err != nil {
 		return User{}, err
@@ -38,7 +38,7 @@ func (serv accountService) SignUp(ctx context.Context, payload RegisterUserPaylo
 	return user, nil
 }
 
-func (serv accountService) VerifyByEmail(ctx context.Context, payload VerifyEmailPayload) error {
+func (serv userService) VerifyByEmail(ctx context.Context, payload VerifyEmailPayload) error {
 	err := payload.Validate()
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (serv accountService) VerifyByEmail(ctx context.Context, payload VerifyEmai
 	return err
 }
 
-func (serv accountService) UpdateUserByID(ctx context.Context, id uuid.UUID, payload UpdateUserPayload) (User, error) {
+func (serv userService) UpdateUserByID(ctx context.Context, id uuid.UUID, payload UpdateUserPayload) (User, error) {
 	err := payload.Validate()
 	if err != nil {
 		return User{}, err
@@ -64,7 +64,7 @@ func (serv accountService) UpdateUserByID(ctx context.Context, id uuid.UUID, pay
 	return user, nil
 }
 
-func (serv accountService) ChangeEmailByID(ctx context.Context, id uuid.UUID, payload ChangeEmailPayload) (User, error) {
+func (serv userService) ChangeEmailByID(ctx context.Context, id uuid.UUID, payload ChangeEmailPayload) (User, error) {
 	err := payload.Validate()
 	if err != nil {
 		return User{}, err

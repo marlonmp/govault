@@ -1,15 +1,13 @@
-package user
+package auth
 
 import (
-	"crypto/rand"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"math/big"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/marlonmp/govault/pkg/crypto"
 )
 
 const (
@@ -17,17 +15,6 @@ const (
 	OTPCharset = "0123456789"
 
 )
-
-// TODO: move this util to pkg
-func GenerateOTP() string {
-	var sb strings.Builder
-	charsetOptions := big.NewInt(int64(len(OTPCharset)))
-	for i := 0; i < OTPLen; i++ {
-		idx, _ := rand.Int(rand.Reader, charsetOptions)
-		sb.WriteByte(OTPCharset[idx.Int64()])
-	}
-	return sb.String()
-}
 
 type SecretKeyMetadata struct {
 	KeyID     string
@@ -84,7 +71,7 @@ type EmailOTP struct {
 }
 
 func NewEmailOTP(userID uuid.UUID, email string) EmailOTP {
-	otp := GenerateOTP()
+	otp := crypto.GenerateOTP()
 	return EmailOTP{UserID: userID, OTP: otp, Email: email}
 }
 
