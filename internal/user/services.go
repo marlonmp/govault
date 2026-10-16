@@ -3,63 +3,81 @@ package user
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/marlonmp/govault/pkg/db"
 )
 
-type userService struct {
+type accountService struct {
 	users  UserRepo
+	emails EmailVerificationRepo
+	dbh    db.Handler
 	logger *slog.Logger
 }
 
-func NewUserService(userRepo UserRepo, logger *slog.Logger) userService {
-	return userService{users: userRepo, logger: logger}
+func NewAccountService(users UserRepo, emails EmailVerificationRepo, dbh db.Handler, logger *slog.Logger) accountService {
+	return accountService{users: users, emails: emails, dbh: dbh, logger: logger}
 }
 
-func (us userService) SignUp(ctx context.Context, payload RegisterUserPayload) (User, error) {
+func (serv accountService) SignUp(ctx context.Context, payload RegisterUserPayload) (User, error) {
 	err := payload.Validate()
 	if err != nil {
 		return User{}, err
 	}
 	user := payload.Build()
-	user, err = us.users.CreateOne(ctx, user)
+	user, err = serv.users.CreateOne(ctx, user)
+	if err != nil {
+		return User{}, err
+	}
+	otp := NewEmailOTP(user.ID, user.Email)
+	_, err = serv.emails.TempCreateEmailOTP(ctx, otp, 10*time.Second)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func (serv accountService) VerifyByEmail(ctx context.Context, payload VerifyEmailPayload) error {
+	err := payload.Validate()
+	if err != nil {
+		return err
+	}
+	otp, err := serv.emails.GetEmailOTPByEmail(ctx, payload.Email)
+	if err != nil {
+		return err
+	}
+	_, err = serv.emails.CreateByEmailOTP(ctx, otp)
+	return err
+}
+
+func (serv accountService) UpdateUserByID(ctx context.Context, id uuid.UUID, payload UpdateUserPayload) (User, error) {
+	err := payload.Validate()
+	if err != nil {
+		return User{}, err
+	}
+	user := payload.Build()
+	user, err = serv.users.UpdateByID(ctx, id, user)
 	if err != nil {
 		return User{}, err
 	}
 	return user, nil
 }
 
-func (us userService) VerifyByEmail(ctx context.Context, payload VerifyEmailPayload) (bool, error) {
-	err := payload.Validate()
-	if err != nil {
-		return false, err
-	}
-	// TODO: implement email verification
-	return true, nil
-}
-
-func (us userService) UpdateUserByID(ctx context.Context, id uuid.UUID, payload UpdateUserPayload) (User, error) {
+func (serv accountService) ChangeEmailByID(ctx context.Context, id uuid.UUID, payload ChangeEmailPayload) (User, error) {
 	err := payload.Validate()
 	if err != nil {
 		return User{}, err
 	}
 	user := payload.Build()
-	user, err = us.users.UpdateByID(ctx, id, user)
+	user, err = serv.users.UpdateByID(ctx, id, user)
 	if err != nil {
 		return User{}, err
 	}
-	return user, nil
-}
-
-func (us userService) ChangeEmailByID(ctx context.Context, id uuid.UUID, payload ChangeEmailPayload) (User, error) {
-	err := payload.Validate()
+	otp := NewEmailOTP(user.ID, user.Email)
+	_, err = serv.emails.TempCreateEmailOTP(ctx, otp, 10*time.Second)
 	if err != nil {
-		return User{}, err
-	}
-	user := payload.Build()
-	user, err = us.users.UpdateByID(ctx, id, user)
-	if err != nil {
-		return User{}, err
+		return user, err
 	}
 	return user, nil
 }
