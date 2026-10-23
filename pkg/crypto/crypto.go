@@ -152,11 +152,11 @@ func EncryptA256GCM(src, key []byte) ([]byte, []byte, error) {
 	}
 	// encrypt the content and append
 	cipherContent := gcm.Seal(nil, iv, src, nil)
-	return cipherContent, iv, nil
+	return iv, cipherContent, nil
 }
 
 // This function decrypts an input with a key using AES-256-GCM
-func DecryptA256GCM(src, key, iv []byte) ([]byte, error) {
+func DecryptA256GCM(iv, src, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, nil

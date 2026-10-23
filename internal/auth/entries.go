@@ -37,7 +37,7 @@ type UserAuth struct {
 	Alg        string
 	Iterations int
 	Salt       []byte
-	Verifier   []byte
+	Verifier   string
 }
 
 func (au *UserAuth) Scan(value any) error {
@@ -87,4 +87,26 @@ type EmailVerification struct {
 
 func NewEmailVerificationFromOTP(otp EmailOTP) EmailVerification {
 	return EmailVerification{UserID: otp.UserID, Email: otp.Email}
+}
+
+type LockedSession struct {
+	UserID          uuid.UUID `json:"user_id"`
+	UserEmail       string    `json:"user_email"`
+	Verifier        string    `json:"v"`
+	Salt            []byte    `json:"iv"`
+	EnrollmentState []byte    `json:"enrollment_state"`
+}
+
+func NewLockedSessionFromUser(user User) *LockedSession {
+	return &LockedSession{UserID: user.ID, UserEmail: user.Email, Verifier: user.Auth.Verifier, Salt: user.Auth.Salt}
+}
+
+func (ls *LockedSession) Unlock(key []byte) *UnlockedSession {
+	return &UnlockedSession{UserID: ls.UserID, UserEmail: ls.UserEmail, SessionKey: key}
+}
+
+type UnlockedSession struct {
+	UserID     uuid.UUID `json:"user_id"`
+	UserEmail  string    `json:"user_email"`
+	SessionKey []byte    `json:"key"`
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/marlonmp/govault/pkg/vals"
 )
 
-type EncJWK struct {
+type JWE struct {
 	KID  string `json:"kid"`
 	ENC  string `json:"enc"`
 	CTY  string `json:"cty"`
@@ -21,17 +21,25 @@ type EncJWK struct {
 	P2S  []byte `json:"p2s,omitempty"`
 }
 
-func ImportEncPrivKey(priv jwk.RSAPrivateKey, auk []byte) (*EncJWK, error) {
+func NewJWEFromRaw(kid string, raw, key []byte) (*JWE, error){
+	jwe := &JWE{KID: kid, ENC: "A256GCM", CTY: "b5+jwk+json"}
+	iv, data, err := crypto.EncryptA256GCM(raw, key)
+	jwe.Data = data
+	jwe.IV = iv
+	return jwe, err
+}
+
+func ImportEncPrivKey(priv jwk.RSAPrivateKey, auk []byte) (*JWE, error) {
 	privJson, err := json.Marshal(priv)
 	if err != nil {
 		return nil, err
 	}
 	kid, _ := priv.KeyID()
-	data, iv, err := crypto.EncryptA256GCM(privJson, auk)
+	iv, data, err := crypto.EncryptA256GCM(privJson, auk)
 	if err != nil {
 		return nil, err
 	}
-	enc := &EncJWK{
+	enc := &JWE{
 		KID:  kid,
 		ENC:  "A256GCM",
 		CTY:  "b5+jwk+json",
@@ -41,7 +49,7 @@ func ImportEncPrivKey(priv jwk.RSAPrivateKey, auk []byte) (*EncJWK, error) {
 	return enc, nil
 }
 
-func ImportEncSymKey(auk jwk.SymmetricKey, password, secretKey []byte) (*EncJWK, error) {
+func ImportEncSymKey(auk jwk.SymmetricKey, password, secretKey []byte) (*JWE, error) {
 	aukJson, err := json.Marshal(auk)
 	if err != nil {
 		return nil, err
@@ -54,11 +62,11 @@ func ImportEncSymKey(auk jwk.SymmetricKey, password, secretKey []byte) (*EncJWK,
 	if err != nil {
 		return nil, nil
 	}
-	data, iv, err := crypto.EncryptA256GCM(aukJson, derivatedKey)
+	iv, data, err := crypto.EncryptA256GCM(aukJson, derivatedKey)
 	if err != nil {
 		return nil, nil
 	}
-	enc := &EncJWK{
+	enc := &JWE{
 		KID:  kid,
 		ENC:  "A256GCM",
 		CTY:  "b5+jwk+json",
@@ -71,55 +79,59 @@ func ImportEncSymKey(auk jwk.SymmetricKey, password, secretKey []byte) (*EncJWK,
 	return enc, nil
 }
 
-func (ej *EncJWK) Validate(vctx vals.ErrorContext) *EncJWK {
-	if len(ej.KID) < 2 {
+func (jwe *JWE) Validate(vctx vals.ErrorContext) *JWE {
+	if len(jwe.KID) < 2 {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "kid",
 			Message: "a value at least of 2 characters was excpected",
 		})
 	}
-	if ej.ENC != "A256GCM" {
+	if jwe.ENC != "A256GCM" {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "enc",
 			Message: "encryption type not supported",
 		})
 	}
-	if ej.CTY != "b5+jwk+json" {
+	if jwe.CTY != "b5+jwk+json" {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "cty",
 			Message: "content type not supported",
 		})
 	}
-	if len(ej.IV) < int(crypto.EncrytionSaltLen) {
+	if len(jwe.IV) < int(crypto.EncrytionSaltLen) {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_length",
 			Path:    "iv",
 			Message: fmt.Sprintf("a salt of mininum %d bytes is required", crypto.EncrytionSaltLen),
 		})
 	}
-	if ej.ALG != "" && ej.ALG != "PBES2g-HS256" {
+	if jwe.ALG != "" && jwe.ALG != "PBES2g-HS256" {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "alg",
 			Message: "algorithm not supported",
 		})
 	}
-	if ej.P2C < crypto.PBES2MinIters || ej.P2C > crypto.PBES2MaxIters {
+	if jwe.P2C < crypto.PBES2MinIters || jwe.P2C > crypto.PBES2MaxIters {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "p2c",
-			Message: fmt.Sprint("iterations must be between %d and %d", crypto.PBES2MinIters, crypto.PBES2MaxIters),
+			Message: fmt.Sprintf("iterations must be between %d and %d", crypto.PBES2MinIters, crypto.PBES2MaxIters),
 		})
 	}
-	if len(ej.P2S) < int(crypto.EncrytionSaltLen) {
+	if len(jwe.P2S) < int(crypto.EncrytionSaltLen) {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_length",
 			Path:    "p2s",
 			Message: fmt.Sprintf("a salt of mininum %d bytes is required", crypto.EncrytionSaltLen),
 		})
 	}
-	return ej
+	return jwe
+}
+
+func (jwe *JWE) Decrypt(key []byte) ([]byte, error) {
+	return crypto.DecryptA256GCM(jwe.IV, jwe.Data, key)
 }

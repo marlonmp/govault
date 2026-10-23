@@ -97,6 +97,17 @@ func ConflictError(message string, err error, errors ...AppErrorItem) error {
 	}
 }
 
+func ForbbidenError(message string) error {
+	return &appError{
+		id:      uuid.New(),
+		code:    NotFoundErrorCode,
+		title:   "you have not persission for this action",
+		errors:  nil,
+		err:     nil,
+	}
+}
+
+
 func NotFoundError(message string) error {
 	return &appError{
 		id:      uuid.New(),

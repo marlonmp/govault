@@ -149,3 +149,80 @@ func (repo *pgEmailVerificationRepo) CreateByEmailOTP(ctx context.Context, otp E
 		Scan(&verification.ID, &verification.CreatedAt)
 	return verification, err
 }
+
+type SessionRepo interface {
+	SetLockedByID(ctx context.Context, id uuid.UUID, session *LockedSession, duration time.Duration) error
+	GetLockedByID(ctx context.Context, id uuid.UUID) (*LockedSession, error)
+	SetUnlockedByID(ctx context.Context, id uuid.UUID, session *UnlockedSession, duration time.Duration) error
+	GetUnlockedByID(ctx context.Context, id uuid.UUID) (*UnlockedSession, error)
+	RemoveByID(ctx context.Context, id uuid.UUID) (bool, error)
+}
+
+type pgSessionRepo struct {
+	db *sql.DB
+	cache *redis.Client
+	logger *slog.Logger
+}
+
+func NewPGSessionRepo(db *sql.DB, cache *redis.Client, logger *slog.Logger) SessionRepo {
+	return &pgSessionRepo{db: db, cache: cache, logger: logger}
+}
+
+func (repo *pgSessionRepo) getSessionKeyName(id uuid.UUID) string {
+	return fmt.Sprintf("session:%s", id)
+}
+
+func (repo *pgSessionRepo) SetLockedByID(ctx context.Context, id uuid.UUID, session *LockedSession, duration time.Duration) error {
+	key := repo.getSessionKeyName(id)
+	val, err := json.Marshal(session)
+	if err != nil {
+		return err
+	}
+	return repo.cache.Set(ctx, key, val, duration).Err()
+}
+
+func (repo *pgSessionRepo) GetLockedByID(ctx context.Context, id uuid.UUID) (*LockedSession, error) {
+	key := repo.getSessionKeyName(id)
+	val, err := repo.cache.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if len(val) == 0 {
+		return nil, errs.NotFoundError("session not found")
+	}
+	session := &LockedSession{}
+	err = json.Unmarshal(val, session)
+	return session, err
+}
+
+func (repo *pgSessionRepo) SetUnlockedByID(ctx context.Context, id uuid.UUID, session *UnlockedSession, duration time.Duration) error {
+	key := repo.getSessionKeyName(id)
+	val, err := json.Marshal(session)
+	if err != nil {
+		return err
+	}
+	return repo.cache.Set(ctx, key, val, duration).Err()
+}
+
+func (repo *pgSessionRepo) GetUnlockedByID(ctx context.Context, id uuid.UUID) (*UnlockedSession, error) {
+	key := repo.getSessionKeyName(id)
+	val, err := repo.cache.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if len(val) == 0 {
+		return nil, errs.NotFoundError("session not found")
+	}
+	session := &UnlockedSession{}
+	err = json.Unmarshal(val, session)
+	return session, err
+}
+
+func (repo *pgSessionRepo) RemoveByID(ctx context.Context, id uuid.UUID) (bool, error) {
+	key := repo.getSessionKeyName(id)
+	n, err := repo.cache.Del(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
+}

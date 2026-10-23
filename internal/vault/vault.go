@@ -69,7 +69,7 @@ func (ei encryptedItem) copy() encryptedItem {
 
 func (ei encryptedItem) unlock(key []byte) (*Item, error) {
 	// TODO: implement iv
-	jsonItem, err := crypto.DecryptA256GCM(ei.Content, key, []byte{})
+	jsonItem, err := crypto.DecryptA256GCM([]byte{}, ei.Content, key)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (i *Item) lock(key []byte) (encryptedItem, error) {
 	}
 	// encrypt content
 	// TODO: implement iv
-	cipherContent, _, err := crypto.EncryptA256GCM(jsonContent, key)
+	_, cipherContent, err := crypto.EncryptA256GCM(jsonContent, key)
 	if err != nil {
 		return encryptedItem{}, err
 	}
@@ -175,7 +175,7 @@ func (ev encVault) Unlock(priv *rsa.PrivateKey) (*vault, error) {
 	}
 	// decrypt the content
 	// TODO: implement iv
-	jsonItems, err := crypto.DecryptA256GCM(ev.Content, key, []byte{})
+	jsonItems, err := crypto.DecryptA256GCM([]byte{}, ev.Content, key)
 	// unmarshal the content
 	items := make([]encryptedItem, 0)
 	err = json.Unmarshal(jsonItems, &items)
@@ -345,7 +345,7 @@ func (v *vault) SoftLock(pub *rsa.PublicKey) (encVault, error) {
 	}
 	// encrypt encrypted items list
 	// TODO: implement iv
-	cipherEncItems, _, err := crypto.EncryptA256GCM(jsonEncItems, v.key)
+	_, cipherEncItems, err := crypto.EncryptA256GCM(jsonEncItems, v.key)
 	if err != nil {
 		return encVault{}, err
 	}
