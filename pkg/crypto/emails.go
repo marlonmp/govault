@@ -14,7 +14,7 @@ const (
 func GenerateOTP() string {
 	var sb strings.Builder
 	charsetOptions := big.NewInt(int64(len(OTPCharset)))
-	for i := 0; i < OTPLen; i++ {
+	for range OTPLen {
 		idx, _ := rand.Int(rand.Reader, charsetOptions)
 		sb.WriteByte(OTPCharset[idx.Int64()])
 	}
