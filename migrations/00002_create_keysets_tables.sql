@@ -1,11 +1,11 @@
 -- +goose Up
 create table keysets (
-    keyset_id uuid primary key default gen_random_uuid(),
+    keyset_id uuid primary key not null default gen_random_uuid(),
     user_id uuid unique not null,
-    sequence_number smallint not null check (sequence_number >= 0),
+    sequence_number smallint not null default 1 check (sequence_number >= 0),
     data jsonb not null,
-    created_at timestamptz default now(),
-    updated_at timestamptz default now()
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
 );
 
 alter table keysets

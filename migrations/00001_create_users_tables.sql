@@ -1,19 +1,19 @@
 -- +goose Up
 create table users (
-    user_id uuid primary key default gen_random_uuid(),
+    user_id uuid primary key not null default gen_random_uuid(),
     nickname varchar(32) not null,
     email varchar(128) unique not null,
     secret_key jsonb,
     auth jsonb,
-    created_at timestamptz default now(),
-    updated_at timestamptz default now()
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
 );
 
 create table email_verification (
-    verification_id uuid primary key default get_random_uuid()
+    verification_id uuid primary key not null default get_random_uuid()
     user_id uuid not null,
     email varchar(128) not null,
-    created_at timestamptz default now(),
+    created_at timestamptz not null default now(),
 );
 
 alter table email_verification
