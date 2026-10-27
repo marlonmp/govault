@@ -3,29 +3,26 @@ package keyset
 import (
 	"context"
 	"log/slog"
+
+	"github.com/google/uuid"
+	"github.com/marlonmp/govault/pkg/crypto"
 )
 
 type encKeysetService struct {
-	keysets EncKeysetRepo
-	logger  *slog.Logger
+	keysets KeysetRepo
+	// TODO: resolve impont cycle
+	// sessions auth.SessionRepo
+	logger *slog.Logger
 }
 
-func EncKeysetService(keysets EncKeysetRepo, logger *slog.Logger) *encKeysetService {
+func EncKeysetService(keysets KeysetRepo, logger *slog.Logger) *encKeysetService {
 	return &encKeysetService{keysets: keysets, logger: logger}
 }
 
-func (eks encKeysetService) Start(ctx context.Context) error {
-	return nil
+func (eks encKeysetService) GetBySessionID(ctx context.Context, sid uuid.UUID) (*crypto.JWE, error) {
+	return nil, nil
 }
 
-func (eks encKeysetService) Auth(ctx context.Context) error {
-	return nil
-}
-
-func (eks encKeysetService) ConfirmKey(ctx context.Context) error {
-	return nil
-}
-
-func (eks encKeysetService) Complete(ctx context.Context) error {
-	return nil
+func (eks encKeysetService) UpdateBySessionID(ctx context.Context, sid uuid.UUID) (*crypto.JWE, error) {
+	return nil, nil
 }
