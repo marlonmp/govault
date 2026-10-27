@@ -8,7 +8,6 @@ import (
 	"github.com/1Password/srp"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v4/jwk"
-	"github.com/marlonmp/govault/internal/keyset"
 	"github.com/marlonmp/govault/pkg/crypto"
 	"github.com/marlonmp/govault/pkg/errs"
 	"github.com/marlonmp/govault/pkg/vals"
@@ -96,7 +95,7 @@ func (field *UserAuthField) Validate(vctx vals.ErrorContext) *UserAuthField {
 		vctx.AddErrors(errs.AppErrorItem{
 			Code:    "invalid_value",
 			Path:    "iterations",
-			Message: fmt.Sprint("iterations must be between %d and %d", crypto.PBES2MinIters, crypto.PBES2MaxIters),
+			Message: fmt.Sprintf("iterations must be between %d and %d", crypto.PBES2MinIters, crypto.PBES2MaxIters),
 		})
 	}
 	if len(field.Salt) < int(crypto.EncrytionSaltLen) {
@@ -150,8 +149,8 @@ type KeysetField struct {
 	ID             uuid.UUID        `json:"uuid"`
 	SequenceNumber int              `json:"sn"`
 	EncryptedBy    string           `json:"encrypted_by"`
-	EncSymKey      *keyset.EncJWK   `json:"enc_sym_key"`
-	EncPrivKey     *keyset.EncJWK   `json:"enc_priv_key"`
+	EncSymKey      *crypto.JWE      `json:"enc_sym_key"`
+	EncPrivKey     *crypto.JWE      `json:"enc_priv_key"`
 	PubKeyImport   json.RawMessage  `json:"pub_key"`
 	PubKey         jwk.RSAPublicKey `json:"-"`
 }
@@ -205,4 +204,41 @@ func (payload *SignupPayload) Validate() error {
 	payload.Keyset.Validate(vctx)
 	payload.UserAuth.Validate(vctx)
 	return vctx.GetError("there are errors in the payload", "some field errors were found")
+}
+
+type StartPayload struct {
+	Email     string `json:"email"`
+	KeyFormat string `json:"key_format"`
+	KeyUUID   string `json:"key_uuid"`
+}
+
+func (payload StartPayload) Validate() error {
+	vctx := vals.NewErrorContext("")
+	if payload.KeyFormat != "A3" {
+		vctx.AddErrors(errs.AppErrorItem{
+			Code:    "invalid_value",
+			Path:    "key_format",
+			Message: "invalid secret key format",
+		})
+	}
+	if len(payload.KeyUUID) != 6 {
+		vctx.AddErrors(errs.AppErrorItem{
+			Code:    "invalid_value",
+			Path:    "key_uuid",
+			Message: "invalid secret key uuid",
+		})
+	}
+	return vctx.GetError("there are errors in the payload", "some field errors were found")
+}
+
+type AuthPayload struct {
+	UserEphemeralPublic string `json:"user_a"`
+}
+
+type ConfirmKeyPayload struct {
+	ClientProof []byte `json:"user_verification_hash"`
+}
+
+type CompletePayload struct {
+	SessionID uuid.UUID `json:"session_id"`
 }
