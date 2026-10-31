@@ -1,6 +1,9 @@
 package crypto
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 
@@ -131,6 +134,10 @@ func (jwe *JWE) Validate(vctx vals.ErrorContext) *JWE {
 	return jwe
 }
 
-func (jwe *JWE) Decrypt(key []byte) ([]byte, error) {
+func (jwe *JWE) DecryptRSAPrivKey(priv *rsa.PrivateKey) ([]byte, error) {
+	return rsa.DecryptOAEP(sha256.New(), rand.Reader, priv, jwe.Data, nil)
+}
+
+func (jwe *JWE) DecryptA256GCM(key []byte) ([]byte, error) {
 	return DecryptA256GCM(jwe.IV, jwe.Data, key)
 }
